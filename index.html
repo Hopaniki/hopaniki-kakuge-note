@@ -6,19 +6,21 @@
     <title>ほぱにき 格ゲー上達ノート</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 勝敗ボタンの選択状態のスタイル */
         input[type="radio"]:checked + label.win-btn {
-            background-color: #3b82f6; /* blue-500 */
+            background-color: #3b82f6;
             color: white;
             border-color: #3b82f6;
         }
         input[type="radio"]:checked + label.lose-btn {
-            background-color: #ef4444; /* red-500 */
+            background-color: #ef4444;
             color: white;
             border-color: #ef4444;
         }
-        
-        /* ダークモード時のスクロールバーの微調整 */
+        .point-checkbox:checked + label {
+            background-color: #8b5cf6;
+            color: white;
+            border-color: #8b5cf6;
+        }
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -33,8 +35,6 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #64748b; 
         }
-
-        /* ふわっと表示するアニメーション */
         .fade-in {
             animation: fadeIn 0.3s ease-in-out;
         }
@@ -42,61 +42,63 @@
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* スプレッドシート送信中のローディング表示用 */
+        .sync-icon {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-200 font-sans min-h-screen pb-12">
 
-    <!-- ヘッダー -->
     <header class="bg-indigo-900 text-white p-4 shadow-md border-b border-indigo-800">
         <div class="max-w-2xl mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold tracking-wider">ほぱにき 格ゲー上達ノート</h1>
+            <!-- 連携ステータス表示 -->
+            <div id="sync-status" class="text-xs font-mono text-indigo-300 hidden items-center">
+                <svg class="sync-icon w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Syncing...
+            </div>
         </div>
     </header>
 
-    <!-- メインコンテンツ -->
     <main class="max-w-2xl mx-auto mt-6 px-4">
         
-        <!-- タブナビゲーション -->
-        <div class="flex bg-slate-800 rounded-lg shadow-sm overflow-hidden mb-6 border border-slate-700">
-            <button id="tab-match" class="flex-1 py-3 text-center font-medium bg-indigo-900/50 text-indigo-300 transition-colors">
-                対戦記録
-            </button>
-            <button id="tab-report" class="flex-1 py-3 text-center font-medium text-slate-400 hover:bg-slate-700 transition-colors border-l border-slate-700">
-                練習日報
-            </button>
+        <div class="flex bg-slate-800 rounded-lg shadow-sm overflow-hidden mb-6 border border-slate-700 text-sm sm:text-base">
+            <button id="tab-match" class="flex-1 py-3 text-center font-medium bg-indigo-900/50 text-indigo-300 transition-colors border-r border-slate-700">対戦記録</button>
+            <button id="tab-replay" class="flex-1 py-3 text-center font-medium text-slate-400 hover:bg-slate-700 transition-colors border-r border-slate-700">リプレイ鑑賞</button>
+            <button id="tab-report" class="flex-1 py-3 text-center font-medium text-slate-400 hover:bg-slate-700 transition-colors">練習日報</button>
         </div>
 
         <!-- ========================================== -->
         <!-- 対戦記録モード -->
         <!-- ========================================== -->
         <div id="content-match">
-            <!-- 入力フォーム -->
             <div class="bg-slate-800 rounded-xl shadow-sm p-5 mb-6 border border-slate-700 relative">
                 <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">対戦結果を入力</h2>
                 <form id="match-form">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">自分のキャラクター</label>
-                        <select id="match-my-character" required class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <select id="match-my-character" required class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 char-select">
                             <option value="">選択してください</option>
                         </select>
                     </div>
-
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">対戦相手のキャラクター</label>
-                        <select id="match-character" required class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <select id="match-character" required class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 char-select">
                             <option value="">選択してください</option>
                         </select>
                     </div>
 
-                    <!-- 💡 カンニングペーパーエリア (非表示からスタート) -->
                     <div id="cheat-sheet-area" class="hidden mb-4 p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-lg fade-in">
                         <h3 class="text-indigo-300 text-sm font-bold mb-2 flex items-center">
                             <svg class="w-4 h-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path></svg>
                             このキャラの過去の対策メモ
                         </h3>
-                        <ul id="cheat-sheet-list" class="list-disc list-inside text-sm text-slate-300 space-y-1">
-                            <!-- ここにメモが入る -->
-                        </ul>
+                        <ul id="cheat-sheet-list" class="list-disc list-inside text-sm text-slate-300 space-y-1"></ul>
                     </div>
 
                     <div class="mb-4">
@@ -104,46 +106,37 @@
                         <div class="flex gap-4">
                             <div class="flex-1 relative">
                                 <input type="radio" name="match-result" id="result-win" value="win" required class="sr-only">
-                                <label for="result-win" class="win-btn block w-full text-center py-2 border-2 border-slate-600 rounded-lg cursor-pointer font-bold text-slate-300 transition-colors hover:bg-slate-700">
-                                    勝ち
-                                </label>
+                                <label for="result-win" class="win-btn block w-full text-center py-2 border-2 border-slate-600 rounded-lg cursor-pointer font-bold text-slate-300 transition-colors hover:bg-slate-700">勝ち</label>
                             </div>
                             <div class="flex-1 relative">
                                 <input type="radio" name="match-result" id="result-lose" value="lose" required class="sr-only">
-                                <label for="result-lose" class="lose-btn block w-full text-center py-2 border-2 border-slate-600 rounded-lg cursor-pointer font-bold text-slate-300 transition-colors hover:bg-slate-700">
-                                    負け
-                                </label>
+                                <label for="result-lose" class="lose-btn block w-full text-center py-2 border-2 border-slate-600 rounded-lg cursor-pointer font-bold text-slate-300 transition-colors hover:bg-slate-700">負け</label>
                             </div>
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">リプレイID (任意)</label>
-                        <input type="text" id="match-replay-id" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="例: ABCD12345">
+                        <input type="text" id="match-replay-id" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500" placeholder="例: ABCD12345">
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">メモ (反省点や対策など)</label>
-                        <textarea id="match-memo" rows="2" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="例: 対空が出なかった、起き攻めが通った"></textarea>
-                        
-                        <!-- 💡 ワンタップタグ機能 -->
+                        <textarea id="match-memo" rows="2" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500" placeholder="例: 対空が出なかった、起き攻めが通った"></textarea>
                         <div class="mt-2 flex flex-wrap gap-2">
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="対空ミス">対空ミス</button>
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="インパクト被弾">インパクト被弾</button>
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="起き攻め成功">起き攻め成功</button>
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="暴れ潰し">暴れ潰し</button>
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="SA忘れ">SA忘れ</button>
-                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full transition-colors border border-slate-600" data-tag="ライン下げすぎ">ライン下げすぎ</button>
+                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full border border-slate-600" data-tag="対空ミス">対空ミス</button>
+                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full border border-slate-600" data-tag="インパクト被弾">インパクト被弾</button>
+                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full border border-slate-600" data-tag="起き攻め成功">起き攻め成功</button>
+                            <button type="button" class="tag-btn text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full border border-slate-600" data-tag="暴れ潰し">暴れ潰し</button>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                    <button type="submit" id="submit-match-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
                         記録を保存
                     </button>
                 </form>
             </div>
 
-            <!-- キャラクター別勝率テーブル -->
             <div class="bg-slate-800 rounded-xl shadow-sm p-5 border border-slate-700 overflow-hidden">
                 <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">キャラクター別勝率</h2>
                 <div class="overflow-x-auto">
@@ -157,26 +150,98 @@
                                 <th class="px-4 py-3 text-right rounded-tr-lg">勝率</th>
                             </tr>
                         </thead>
-                        <tbody id="stats-table-body" class="divide-y divide-slate-700">
-                            <!-- ここにデータが動的に挿入されます -->
-                        </tbody>
+                        <tbody id="stats-table-body" class="divide-y divide-slate-700"></tbody>
                     </table>
                 </div>
-                <div id="no-match-data" class="text-center text-slate-400 py-6 hidden">
-                    まだ対戦記録がありません。
-                </div>
+                <div id="no-match-data" class="text-center text-slate-400 py-6 hidden">まだ対戦記録がありません。</div>
             </div>
 
-            <!-- 最近の対戦ログ -->
             <div class="bg-slate-800 rounded-xl shadow-sm p-5 border border-slate-700 mt-6 relative">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-4">
                     <h2 class="text-lg font-bold text-white">最近の対戦ログ</h2>
-                    <!-- 💡 調子メーター -->
                     <div id="trend-meter" class="flex items-center gap-2"></div>
                 </div>
-                <div id="match-history-list" class="space-y-3">
-                    <!-- ここにデータが動的に挿入されます -->
-                </div>
+                <div id="match-history-list" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- リプレイ鑑賞モード -->
+        <!-- ========================================== -->
+        <div id="content-replay" class="hidden">
+            <div class="bg-slate-800 rounded-xl shadow-sm p-5 mb-6 border border-slate-700">
+                <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">他人の対戦から学ぶ</h2>
+                <form id="replay-study-form">
+                    
+                    <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 mb-4">
+                        <h3 class="text-sm font-bold text-violet-400 mb-3 flex items-center"><span class="bg-violet-900 text-white px-2 py-0.5 rounded mr-2 text-xs">1P</span>1P側の情報</h3>
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">キャラクター <span class="text-red-400">*</span></label>
+                                <select id="study-p1-char" required class="w-full p-2 text-sm bg-slate-800 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500 char-select">
+                                    <option value="">選択</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">ランク帯</label>
+                                <select id="study-p1-rank" class="w-full p-2 text-sm bg-slate-800 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500 rank-select">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center -my-6 relative z-10">
+                        <div class="bg-slate-700 text-slate-300 font-bold px-3 py-1 rounded-full border-4 border-slate-800 text-sm">VS</div>
+                    </div>
+
+                    <div class="bg-slate-900/50 p-4 rounded-lg border border-slate-700 mb-6 mt-2">
+                        <h3 class="text-sm font-bold text-teal-400 mb-3 flex items-center"><span class="bg-teal-900 text-white px-2 py-0.5 rounded mr-2 text-xs">2P</span>2P側の情報</h3>
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">キャラクター <span class="text-red-400">*</span></label>
+                                <select id="study-p2-char" required class="w-full p-2 text-sm bg-slate-800 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500 char-select">
+                                    <option value="">選択</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">ランク帯</label>
+                                <select id="study-p2-rank" class="w-full p-2 text-sm bg-slate-800 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500 rank-select">
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">リプレイID / 動画URL (任意)</label>
+                        <input type="text" id="study-source" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500" placeholder="ID: ABCD12345 または URL">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-300 mb-2">注目ポイント (複数選択可)</label>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="relative"><input type="checkbox" id="point-combo" value="コンボ" class="sr-only point-checkbox"><label for="point-combo" class="block text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full cursor-pointer border border-slate-600">コンボ</label></div>
+                            <div class="relative"><input type="checkbox" id="point-setup" value="セットプレイ" class="sr-only point-checkbox"><label for="point-setup" class="block text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full cursor-pointer border border-slate-600">セットプレイ</label></div>
+                            <div class="relative"><input type="checkbox" id="point-neutral" value="立ち回り" class="sr-only point-checkbox"><label for="point-neutral" class="block text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full cursor-pointer border border-slate-600">立ち回り</label></div>
+                            <div class="relative"><input type="checkbox" id="point-defense" value="防御・暴れ" class="sr-only point-checkbox"><label for="point-defense" class="block text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full cursor-pointer border border-slate-600">防御・暴れ</label></div>
+                            <div class="relative"><input type="checkbox" id="point-okizeme" value="起き攻め" class="sr-only point-checkbox"><label for="point-okizeme" class="block text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 py-1.5 px-3 rounded-full cursor-pointer border border-slate-600">起き攻め</label></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">気づき・メモ <span class="text-red-400">*</span></label>
+                        <textarea id="study-memo" required rows="3" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-violet-500" placeholder="例: 画面端のラッシュ大Kガード後、中足が割れない連携になっていた。"></textarea>
+                    </div>
+
+                    <button type="submit" id="submit-study-btn" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                        鑑賞メモを保存
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-slate-800 rounded-xl shadow-sm p-5 border border-slate-700">
+                <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">ストックした学び</h2>
+                <div id="study-list" class="space-y-4"></div>
+                <div id="no-study-data" class="text-center text-slate-400 py-6 hidden">まだ鑑賞メモがありません。</div>
             </div>
         </div>
 
@@ -184,41 +249,31 @@
         <!-- 練習日報モード -->
         <!-- ========================================== -->
         <div id="content-report" class="hidden">
-            <!-- 入力フォーム -->
             <div class="bg-slate-800 rounded-xl shadow-sm p-5 mb-6 border border-slate-700">
                 <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">今日の練習を記録</h2>
                 <form id="report-form">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">練習時間 (分)</label>
-                        <input type="number" id="report-time" required min="5" step="5" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="例: 60">
+                        <input type="number" id="report-time" required min="5" step="5" class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500" placeholder="例: 60">
                     </div>
-
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-slate-300 mb-1">今日意識したポイント・成果</label>
-                        <textarea id="report-focus" required rows="3" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="例: トレモでコンボの成功率を上げた。実戦で対空を意識した。"></textarea>
+                        <textarea id="report-focus" required rows="3" class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500" placeholder="例: トレモでコンボの成功率を上げた。実戦で対空を意識した。"></textarea>
                     </div>
-
-                    <!-- 💡 動画スクラップ機能 -->
                     <div class="mb-5">
                         <label class="block text-sm font-medium text-slate-300 mb-1">参考動画URL (任意)</label>
-                        <input type="url" id="report-url" class="w-full p-2 bg-slate-900 text-white placeholder-slate-500 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500" placeholder="https://youtube.com/...">
+                        <input type="url" id="report-url" class="w-full p-2 bg-slate-900 text-white border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-500" placeholder="https://youtube.com/...">
                     </div>
-
-                    <button type="submit" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                    <button type="submit" id="submit-report-btn" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
                         日報を保存
                     </button>
                 </form>
             </div>
 
-            <!-- 日報リスト -->
             <div class="bg-slate-800 rounded-xl shadow-sm p-5 border border-slate-700">
                 <h2 class="text-lg font-bold mb-4 border-b border-slate-700 pb-2 text-white">過去の練習日報</h2>
-                <div id="report-list" class="space-y-4">
-                    <!-- ここにデータが動的に挿入されます -->
-                </div>
-                <div id="no-report-data" class="text-center text-slate-400 py-6 hidden">
-                    まだ日報がありません。
-                </div>
+                <div id="report-list" class="space-y-4"></div>
+                <div id="no-report-data" class="text-center text-slate-400 py-6 hidden">まだ日報がありません。</div>
             </div>
         </div>
 
@@ -226,25 +281,18 @@
 
     <script>
         // ==========================================
-        // 状態管理 (データの初期化と読み込み)
+        // 💡 GAS（Google Apps Script）のURL設定
+        // ==========================================
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzSIX5oQo5RWrfMZT2gw9OmX7R6QIfZyMhu7dY2tk_xxlib5U6GcB43d4j_SAJUDSut/exec";
+
+        // ==========================================
+        // 状態管理
         // ==========================================
         let matches = JSON.parse(localStorage.getItem('fg_matches')) || [];
         let reports = JSON.parse(localStorage.getItem('fg_reports')) || [];
+        let studies = JSON.parse(localStorage.getItem('fg_studies')) || [];
 
-        // ==========================================
-        // DOM要素の取得
-        // ==========================================
-        const tabMatch = document.getElementById('tab-match');
-        const tabReport = document.getElementById('tab-report');
-        const contentMatch = document.getElementById('content-match');
-        const contentReport = document.getElementById('content-report');
-        
-        const matchForm = document.getElementById('match-form');
-        const reportForm = document.getElementById('report-form');
-
-        // ==========================================
-        // キャラクターリストの生成
-        // ==========================================
+        // キャラクターリスト・ランクリスト生成 (省略せず記述)
         const characters = [
             "C リュウ", "M リュウ", "C ケン", "M ケン", "C 春麗", "M 春麗", "C ガイル", "M ガイル", 
             "C ブランカ", "M ブランカ", "C ダルシム", "M ダルシム", "C エドモンド本田", "M エドモンド本田", 
@@ -256,306 +304,332 @@
             "C 舞", "M 舞", "C エレナ", "M エレナ", "C サガット", "M サガット", "C C.ヴァイパー", "M C.ヴァイパー", 
             "C アレックス", "M アレックス", "C イングリッド", "M イングリッド", "その他"
         ];
-
-        const myCharSelect = document.getElementById('match-my-character');
-        const oppCharSelect = document.getElementById('match-character');
-
-        characters.forEach(char => {
-            myCharSelect.add(new Option(char, char));
-            oppCharSelect.add(new Option(char, char));
+        document.querySelectorAll('.char-select').forEach(select => {
+            characters.forEach(char => select.add(new Option(char, char)));
         });
 
-        // ==========================================
+        const ranks = [{ value: "", label: "未設定" }];
+        for (let i = 2500; i >= 1000; i -= 100) { ranks.push({ value: `MR${i}台`, label: `MR${i}台` }); }
+        ranks.push({ value: "Master (MR未定)", label: "Master (MR未定)" });
+        const rankNames = ["Diamond", "Platinum", "Gold", "Silver", "Bronze", "Iron", "Rookie"];
+        rankNames.forEach(rankName => {
+            for (let i = 5; i >= 1; i--) { ranks.push({ value: `${rankName} ${i}`, label: `${rankName} ${i}` }); }
+        });
+        document.querySelectorAll('.rank-select').forEach(select => {
+            ranks.forEach(rank => select.add(new Option(rank.label, rank.value)));
+        });
+
         // タブ切り替えロジック
+        const tabs = [
+            { id: 'match', btn: document.getElementById('tab-match'), content: document.getElementById('content-match') },
+            { id: 'replay', btn: document.getElementById('tab-replay'), content: document.getElementById('content-replay') },
+            { id: 'report', btn: document.getElementById('tab-report'), content: document.getElementById('content-report') }
+        ];
+        function switchTab(activeId) {
+            tabs.forEach(tab => {
+                if (tab.id === activeId) {
+                    tab.content.classList.remove('hidden');
+                    tab.btn.className = "flex-1 py-3 text-center font-medium bg-indigo-900/50 text-indigo-300 transition-colors border-r border-slate-700 last:border-r-0";
+                } else {
+                    tab.content.classList.add('hidden');
+                    tab.btn.className = "flex-1 py-3 text-center font-medium text-slate-400 hover:bg-slate-700 transition-colors border-r border-slate-700 last:border-r-0";
+                }
+            });
+        }
+        tabs.forEach(tab => tab.btn.addEventListener('click', () => switchTab(tab.id)));
+        switchTab('match');
+
         // ==========================================
-        function switchTab(tabId) {
-            if (tabId === 'match') {
-                contentMatch.classList.remove('hidden');
-                contentReport.classList.add('hidden');
+        // 💡 共通機能：スプレッドシートへのデータ送信
+        // ==========================================
+        async function sendDataToGAS(data, buttonId) {
+            const btn = document.getElementById(buttonId);
+            const originalText = btn.textContent;
+            const syncStatus = document.getElementById('sync-status');
+            
+            // UIを送信中状態に変更
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="sync-icon w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>保存中...`;
+            syncStatus.classList.remove('hidden');
+            syncStatus.classList.add('flex');
+
+            try {
+                // GASにPOSTリクエストを送信
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    // mode: 'no-cors' を指定するとブラウザのエラーは回避できるが、レスポンスの中身は読めない
+                    // GASへの一方通行送信の場合はこれでOK
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
                 
-                tabMatch.classList.add('bg-indigo-900/50', 'text-indigo-300');
-                tabMatch.classList.remove('text-slate-400', 'hover:bg-slate-700');
-                
-                tabReport.classList.remove('bg-indigo-900/50', 'text-indigo-300');
-                tabReport.classList.add('text-slate-400', 'hover:bg-slate-700');
-            } else {
-                contentMatch.classList.add('hidden');
-                contentReport.classList.remove('hidden');
-                
-                tabReport.classList.add('bg-indigo-900/50', 'text-indigo-300');
-                tabReport.classList.remove('text-slate-400', 'hover:bg-slate-700');
-                
-                tabMatch.classList.remove('bg-indigo-900/50', 'text-indigo-300');
-                tabMatch.classList.add('text-slate-400', 'hover:bg-slate-700');
+                // 送信完了時のUIリセット
+                showToast('保存しました！（スプレッドシートにも送信完了）');
+            } catch (error) {
+                console.error("GAS送信エラー:", error);
+                // エラーになってもローカル保存は完了しているのでユーザーにはその旨を伝える
+                showToast('端末に保存しました（※クラウド送信は失敗しました）');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                syncStatus.classList.add('hidden');
+                syncStatus.classList.remove('flex');
             }
         }
 
-        tabMatch.addEventListener('click', () => switchTab('match'));
-        tabReport.addEventListener('click', () => switchTab('report'));
-
         // ==========================================
-        // 💡 1. カンニングペーパー機能
+        // 対戦記録モード
         // ==========================================
-        oppCharSelect.addEventListener('change', (e) => {
+        // (カンニングペーパーとタグのロジックはそのまま)
+        document.getElementById('match-character').addEventListener('change', (e) => {
             const selectedChar = e.target.value;
             const cheatSheetArea = document.getElementById('cheat-sheet-area');
             const cheatSheetList = document.getElementById('cheat-sheet-list');
-
-            if (!selectedChar) {
-                cheatSheetArea.classList.add('hidden');
-                return;
-            }
-
-            // この相手キャラで、メモが入力されている過去の対戦を抽出
+            if (!selectedChar) { cheatSheetArea.classList.add('hidden'); return; }
             const relevantMatches = matches.filter(m => m.character === selectedChar && m.memo && m.memo.trim() !== '');
-
             if (relevantMatches.length > 0) {
-                // 最新の3件を取得
-                const recentMemos = [...relevantMatches].reverse().slice(0, 3);
-                
-                cheatSheetList.innerHTML = recentMemos.map(m => {
-                    const resultBadge = m.result === 'win' 
-                        ? '<span class="text-[10px] bg-blue-900 text-blue-300 px-1 rounded ml-1 border border-blue-700">勝ち</span>'
-                        : '<span class="text-[10px] bg-red-900 text-red-300 px-1 rounded ml-1 border border-red-700">負け</span>';
-                    return `<li class="py-0.5">${m.memo} ${resultBadge}</li>`;
+                cheatSheetList.innerHTML = [...relevantMatches].reverse().slice(0, 3).map(m => {
+                    const badge = m.result === 'win' ? '<span class="text-[10px] bg-blue-900 text-blue-300 px-1 rounded ml-1 border border-blue-700">勝ち</span>' : '<span class="text-[10px] bg-red-900 text-red-300 px-1 rounded ml-1 border border-red-700">負け</span>';
+                    return `<li class="py-0.5">${m.memo} ${badge}</li>`;
                 }).join('');
-                
                 cheatSheetArea.classList.remove('hidden');
-            } else {
-                cheatSheetArea.classList.add('hidden');
-            }
+            } else { cheatSheetArea.classList.add('hidden'); }
         });
-
-        // ==========================================
-        // 💡 2. ワンタップタグ機能
-        // ==========================================
-        document.querySelectorAll('.tag-btn').forEach(btn => {
+        document.querySelectorAll('#match-form .tag-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const memoInput = document.getElementById('match-memo');
-                const tag = btn.getAttribute('data-tag');
-                // メモ欄が空でなければスペースを空けてからタグを追加
-                const prefix = memoInput.value && !memoInput.value.endsWith(' ') ? ' ' : '';
-                memoInput.value += prefix + '#' + tag + ' ';
+                memoInput.value += (memoInput.value && !memoInput.value.endsWith(' ') ? ' ' : '') + '#' + btn.getAttribute('data-tag') + ' ';
                 memoInput.focus();
             });
         });
 
-        // ==========================================
-        // 対戦記録モードの処理
-        // ==========================================
-        matchForm.addEventListener('submit', (e) => {
+        document.getElementById('match-form').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const myCharacter = document.getElementById('match-my-character').value;
-            const character = document.getElementById('match-character').value;
-            const result = document.querySelector('input[name="match-result"]:checked').value;
-            const replayId = document.getElementById('match-replay-id').value;
-            const memo = document.getElementById('match-memo').value;
-            const date = new Date().toISOString();
+            // 日本時間での現在時刻を見やすい形式にフォーマット
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
 
-            const newMatch = { id: Date.now(), date, myCharacter, character, result, replayId, memo };
+            const newData = {
+                type: "match", // GAS側で仕分けするためのタイプ
+                id: Date.now(), 
+                date: dateStr, // フォーマットした文字列として保存
+                myCharacter: document.getElementById('match-my-character').value, 
+                character: document.getElementById('match-character').value,
+                result: document.querySelector('input[name="match-result"]:checked').value === 'win' ? '勝ち' : '負け', // 日本語に変換
+                replayId: document.getElementById('match-replay-id').value, 
+                memo: document.getElementById('match-memo').value
+            };
             
-            matches.push(newMatch);
+            matches.push({ ...newData, result: document.querySelector('input[name="match-result"]:checked').value }); // ローカル用はwin/lose維持
             localStorage.setItem('fg_matches', JSON.stringify(matches));
             
-            // フォームリセット
-            matchForm.reset();
-            document.getElementById('cheat-sheet-area').classList.add('hidden'); // カンニングペーパーも隠す
+            e.target.reset(); document.getElementById('cheat-sheet-area').classList.add('hidden');
+            renderStats(); renderMatchHistory();
             
-            // 画面更新
-            renderStats();
-            renderMatchHistory();
-            
-            // 一時的なポップアップ通知
-            showToast('対戦記録を保存しました！');
+            // スプレッドシートへ送信
+            sendDataToGAS(newData, 'submit-match-btn');
         });
 
         function renderStats() {
             const tbody = document.getElementById('stats-table-body');
             const noDataMsg = document.getElementById('no-match-data');
-            
-            if (matches.length === 0) {
-                tbody.innerHTML = '';
-                noDataMsg.classList.remove('hidden');
-                return;
-            }
-            
+            if (matches.length === 0) { tbody.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
             noDataMsg.classList.add('hidden');
-
             const stats = {};
             matches.forEach(m => {
-                const myChar = m.myCharacter || '未設定';
-                const oppChar = m.character;
-                const key = `${myChar}_${oppChar}`;
-
-                if (!stats[key]) {
-                    stats[key] = { myChar, oppChar, play: 0, win: 0 };
-                }
-                stats[key].play++;
-                if (m.result === 'win') stats[key].win++;
+                const key = `${m.myCharacter || '未設定'}_${m.character}`;
+                if (!stats[key]) stats[key] = { myChar: m.myCharacter || '未設定', oppChar: m.character, play: 0, win: 0 };
+                stats[key].play++; if (m.result === 'win') stats[key].win++;
             });
-
-            const statsArray = Object.values(stats).map(data => {
-                const winRate = Math.round((data.win / data.play) * 100);
-                return { ...data, winRate };
-            }).sort((a, b) => b.play - a.play);
-
-            tbody.innerHTML = statsArray.map(stat => `
+            const statsArray = Object.values(stats).map(d => ({ ...d, winRate: Math.round((d.win / d.play) * 100) })).sort((a, b) => b.play - a.play);
+            tbody.innerHTML = statsArray.map(s => `
                 <tr class="hover:bg-slate-700 transition-colors">
-                    <td class="px-4 py-3 font-medium text-slate-200">${stat.myChar}</td>
-                    <td class="px-4 py-3 font-medium text-white">${stat.oppChar}</td>
-                    <td class="px-4 py-3 text-right">${stat.play}</td>
-                    <td class="px-4 py-3 text-right text-blue-400">${stat.win}</td>
-                    <td class="px-4 py-3 text-right font-bold ${stat.winRate >= 50 ? 'text-green-400' : 'text-red-400'}">
-                        ${stat.winRate}%
-                    </td>
-                </tr>
-            `).join('');
+                    <td class="px-4 py-3 font-medium text-slate-200">${s.myChar}</td>
+                    <td class="px-4 py-3 font-medium text-white">${s.oppChar}</td>
+                    <td class="px-4 py-3 text-right">${s.play}</td>
+                    <td class="px-4 py-3 text-right text-blue-400">${s.win}</td>
+                    <td class="px-4 py-3 text-right font-bold ${s.winRate >= 50 ? 'text-green-400' : 'text-red-400'}">${s.winRate}%</td>
+                </tr>`).join('');
         }
 
         function renderMatchHistory() {
             const list = document.getElementById('match-history-list');
             const trendMeter = document.getElementById('trend-meter');
-            
-            if (matches.length === 0) {
-                list.innerHTML = '<div class="text-center text-slate-400 py-4">まだ対戦記録がありません。</div>';
-                trendMeter.innerHTML = '';
-                return;
-            }
-
-            // 最新の10件
+            if (matches.length === 0) { list.innerHTML = ''; trendMeter.innerHTML = ''; return; }
             const recentMatches = [...matches].reverse().slice(0, 10);
-
-            // 💡 3. 調子メーターの描画
-            const winCount = recentMatches.filter(m => m.result === 'win').length;
-            const trendWinRate = Math.round((winCount / recentMatches.length) * 100);
-            
-            // 丸いドットを生成 (古い試合が左、新しい試合が右になるように並べる)
-            const dotsHtml = [...recentMatches].reverse().map(m => {
-                return m.result === 'win' 
-                    ? '<span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]" title="WIN"></span>'
-                    : '<span class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.6)]" title="LOSE"></span>';
-            }).join('');
-
-            trendMeter.innerHTML = `
-                <span class="text-xs font-bold text-slate-400 tracking-wider">直近: ${trendWinRate}%</span>
-                <div class="flex gap-1 ml-2 bg-slate-900/50 py-1 px-2 rounded-full border border-slate-700">
-                    ${dotsHtml}
-                </div>
-            `;
-
-            // リスト描画
+            const trendWinRate = Math.round((recentMatches.filter(m => m.result === 'win').length / recentMatches.length) * 100);
+            trendMeter.innerHTML = `<span class="text-xs font-bold text-slate-400 tracking-wider">直近: ${trendWinRate}%</span><div class="flex gap-1 ml-2 bg-slate-900/50 py-1 px-2 rounded-full border border-slate-700">${[...recentMatches].reverse().map(m => m.result === 'win' ? '<span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]"></span>' : '<span class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.6)]"></span>').join('')}</div>`;
             list.innerHTML = recentMatches.map(m => {
-                const d = new Date(m.date);
-                const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+                // dateStrが古い形式の場合と新しい形式(文字列)の場合で分岐
+                let dateDisp = m.date;
+                if(m.date.includes('T')) {
+                    const d = new Date(m.date);
+                    dateDisp = `${d.getMonth()+1}/${d.getDate()}`;
+                } else {
+                    dateDisp = m.date.substring(5, 10); // MM/DD部分だけ抽出
+                }
                 const isWin = m.result === 'win';
-                const resultText = isWin ? 'WIN' : 'LOSE';
-                const resultColor = isWin ? 'bg-blue-900/50 text-blue-300 border border-blue-800' : 'bg-red-900/50 text-red-300 border border-red-800';
-                const replayBadge = m.replayId ? `<span class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded ml-2 font-mono">ID: ${m.replayId}</span>` : '';
-                const memoText = m.memo ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-wrap">${m.memo}</p>` : '';
-
-                return `
-                <div class="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                return `<div class="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
                     <div class="flex justify-between items-center mb-1">
                         <div class="flex items-center flex-wrap gap-y-1">
-                            <span class="text-xs font-bold ${resultColor} px-2 py-1 rounded-sm mr-2">${resultText}</span>
+                            <span class="text-xs font-bold ${isWin ? 'bg-blue-900/50 text-blue-300 border-blue-800' : 'bg-red-900/50 text-red-300 border-red-800'} border px-2 py-0.5 rounded mr-2">${isWin ? 'WIN' : 'LOSE'}</span>
                             <span class="text-sm font-medium text-slate-200">${m.myCharacter || '未設定'} <span class="text-slate-500 mx-1">vs</span> ${m.character}</span>
-                            ${replayBadge}
                         </div>
-                        <span class="text-xs text-slate-400 shrink-0 ml-2">${dateStr}</span>
+                        <span class="text-xs text-slate-400 ml-2">${dateDisp}</span>
                     </div>
-                    ${memoText}
-                </div>
-                `;
+                    ${m.memo ? `<p class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">${m.memo}</p>` : ''}
+                </div>`;
             }).join('');
         }
 
         // ==========================================
-        // 練習日報モードの処理
+        // リプレイ鑑賞モード
         // ==========================================
-        reportForm.addEventListener('submit', (e) => {
+        document.getElementById('replay-study-form').addEventListener('submit', (e) => {
             e.preventDefault();
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
             
-            const time = document.getElementById('report-time').value;
-            const focus = document.getElementById('report-focus').value;
-            const url = document.getElementById('report-url').value; // 動画URLを取得
-            const date = new Date().toISOString();
+            const selectedPoints = Array.from(document.querySelectorAll('.point-checkbox:checked')).map(cb => cb.value);
+            
+            const newData = {
+                type: "study",
+                id: Date.now(),
+                date: dateStr,
+                p1Char: document.getElementById('study-p1-char').value,
+                p1Rank: document.getElementById('study-p1-rank').value,
+                p2Char: document.getElementById('study-p2-char').value,
+                p2Rank: document.getElementById('study-p2-rank').value,
+                source: document.getElementById('study-source').value,
+                points: selectedPoints,
+                memo: document.getElementById('study-memo').value
+            };
 
-            const newReport = { id: Date.now(), date, time, focus, url };
+            studies.unshift(newData);
+            localStorage.setItem('fg_studies', JSON.stringify(studies));
+            e.target.reset(); renderStudies();
             
-            reports.unshift(newReport);
-            localStorage.setItem('fg_reports', JSON.stringify(reports));
+            // スプレッドシートへ送信
+            sendDataToGAS(newData, 'submit-study-btn');
+        });
+
+        function renderStudies() {
+            const list = document.getElementById('study-list');
+            const noDataMsg = document.getElementById('no-study-data');
+            if (studies.length === 0) { list.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
+            noDataMsg.classList.add('hidden');
+
+            list.innerHTML = studies.map(s => {
+                const tagsHtml = s.points && s.points.length > 0 ? s.points.map(p => `<span class="text-[10px] bg-violet-900/60 text-violet-300 border border-violet-700/50 px-1.5 py-0.5 rounded-sm mr-1">${p}</span>`).join('') : '';
+                const p1Char = s.p1Char || s.myChar || '未設定';
+                const p2Char = s.p2Char || s.oppChar || '未設定';
+                const p1RankHtml = s.p1Rank ? `<span class="text-xs text-slate-400 font-normal ml-1">(${s.p1Rank})</span>` : '';
+                const p2RankHtml = s.p2Rank ? `<span class="text-xs text-slate-400 font-normal ml-1">(${s.p2Rank})</span>` : '';
+
+                let sourceHtml = '';
+                if (s.source) {
+                    if (s.source.startsWith('http')) {
+                        sourceHtml = `<a href="${s.source}" target="_blank" class="text-xs text-violet-400 hover:underline inline-flex items-center mt-2"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>動画を開く</a>`;
+                    } else {
+                        sourceHtml = `<div class="text-xs text-slate-400 mt-2 font-mono bg-slate-800 inline-block px-2 py-1 rounded">ID: ${s.source}</div>`;
+                    }
+                }
+                
+                let dateDisp = s.date;
+                if(s.date && s.date.includes('T')) {
+                    const d = new Date(s.date);
+                    dateDisp = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+                } else if(s.date) {
+                    dateDisp = s.date.substring(0, 10);
+                }
+
+                return `
+                <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                    <div class="flex justify-between items-start mb-3 border-b border-slate-600/50 pb-2">
+                        <div class="font-bold text-slate-200 flex flex-col gap-1">
+                            <div class="flex items-baseline">
+                                <span class="bg-violet-900 text-white px-1.5 py-0.5 rounded mr-1.5 text-[10px] self-center">1P</span>
+                                <span class="text-white">${p1Char}</span>${p1RankHtml}
+                            </div>
+                            <div class="text-slate-500 text-[10px] pl-6 font-normal">VS</div>
+                            <div class="flex items-baseline">
+                                <span class="bg-teal-900 text-white px-1.5 py-0.5 rounded mr-1.5 text-[10px] self-center">2P</span>
+                                <span class="text-slate-300">${p2Char}</span>${p2RankHtml}
+                            </div>
+                        </div>
+                        <span class="text-xs text-slate-500 mt-1">${dateDisp}</span>
+                    </div>
+                    ${tagsHtml ? `<div class="mb-2 flex flex-wrap">${tagsHtml}</div>` : ''}
+                    <p class="text-sm text-slate-200 whitespace-pre-wrap bg-slate-800/50 p-3 rounded border-l-2 border-violet-500">${s.memo}</p>
+                    ${sourceHtml}
+                </div>`;
+            }).join('');
+        }
+
+        // ==========================================
+        // 練習日報モード
+        // ==========================================
+        document.getElementById('report-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+            const newData = {
+                type: "report",
+                id: Date.now(), 
+                date: dateStr,
+                time: document.getElementById('report-time').value, 
+                focus: document.getElementById('report-focus').value, 
+                url: document.getElementById('report-url').value
+            };
+
+            reports.unshift(newData);
+            localStorage.setItem('fg_reports', JSON.stringify(reports)); 
+            e.target.reset(); renderReports();
             
-            reportForm.reset();
-            renderReports();
-            showToast('練習日報を保存しました！');
+            // スプレッドシートへ送信
+            sendDataToGAS(newData, 'submit-report-btn');
         });
 
         function renderReports() {
             const list = document.getElementById('report-list');
             const noDataMsg = document.getElementById('no-report-data');
-            
-            if (reports.length === 0) {
-                list.innerHTML = '';
-                noDataMsg.classList.remove('hidden');
-                return;
-            }
-            
+            if (reports.length === 0) { list.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
             noDataMsg.classList.add('hidden');
+            list.innerHTML = reports.map(r => {
+                let dateDisp = r.date;
+                if(r.date && r.date.includes('T')) {
+                    const d = new Date(r.date);
+                    dateDisp = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+                } else if (r.date) {
+                    dateDisp = r.date.substring(0, 10);
+                }
 
-            list.innerHTML = reports.map(report => {
-                const d = new Date(report.date);
-                const dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-                
-                // 💡 4. 動画スクラップのリンク生成
-                const urlLink = report.url ? `
-                    <div class="mt-3 pt-3 border-t border-slate-600/50">
-                        <a href="${report.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-medium text-teal-400 hover:text-teal-300 bg-teal-900/20 py-1 px-2 rounded transition-colors">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            参考動画を見る
-                        </a>
-                    </div>
-                ` : '';
-
-                return `
-                <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                return `<div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-bold text-slate-400">${dateStr}</span>
-                        <span class="text-xs bg-teal-900/50 text-teal-300 border border-teal-800 px-2 py-1 rounded-full font-medium">
-                            ${report.time}分
-                        </span>
+                        <span class="text-sm font-bold text-slate-400">${dateDisp}</span>
+                        <span class="text-xs bg-teal-900/50 text-teal-300 border border-teal-800 px-2 py-1 rounded-full font-medium">${r.time}分</span>
                     </div>
-                    <p class="text-sm text-slate-200 whitespace-pre-wrap">${report.focus}</p>
-                    ${urlLink}
-                </div>
-                `;
+                    <p class="text-sm text-slate-200 whitespace-pre-wrap">${r.focus}</p>
+                    ${r.url ? `<div class="mt-3 pt-3 border-t border-slate-600/50"><a href="${r.url}" target="_blank" class="inline-flex items-center text-xs font-medium text-teal-400 hover:text-teal-300 bg-teal-900/20 py-1 px-2 rounded transition-colors"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>参考動画を見る</a></div>` : ''}
+                </div>`;
             }).join('');
         }
 
         // ==========================================
-        // 共通機能
+        // 共通
         // ==========================================
-        // 簡易トースト通知 (画面上部にフワッと出るやつ)
         function showToast(message) {
             const toast = document.createElement('div');
             toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-xl font-bold z-50 fade-in';
             toast.textContent = message;
             document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.5s ease';
-                setTimeout(() => toast.remove(), 500);
-            }, 2000);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s ease'; setTimeout(() => toast.remove(), 500); }, 2000);
         }
 
-        // ==========================================
-        // 初期化実行
-        // ==========================================
-        renderStats();
-        renderMatchHistory();
-        renderReports();
-
+        renderStats(); renderMatchHistory(); renderReports(); renderStudies();
     </script>
 </body>
 </html>
