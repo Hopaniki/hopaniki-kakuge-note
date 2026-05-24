@@ -355,12 +355,13 @@
 
             try {
                 // GASにPOSTリクエストを送信
-                const response = await fetch(GAS_URL, {
+                await fetch(GAS_URL, {
                     method: 'POST',
-                    // mode: 'no-cors' を指定するとブラウザのエラーは回避できるが、レスポンスの中身は読めない
-                    // GASへの一方通行送信の場合はこれでOK
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    mode: 'no-cors', // CORSエラーを回避
+                    headers: { 
+                        // application/jsonだとブラウザにブロックされやすいため text/plain に変更
+                        'Content-Type': 'text/plain' 
+                    },
                     body: JSON.stringify(data)
                 });
                 
@@ -633,4 +634,5 @@
     </script>
 </body>
 </html>
+
 
