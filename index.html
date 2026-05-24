@@ -277,6 +277,14 @@
             </div>
         </div>
 
+        <!-- 💡 データリセット用ボタン（一時的） -->
+        <div class="mt-12 mb-6 text-center">
+            <button id="reset-data-btn" class="text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:bg-red-900/30 px-4 py-2 rounded transition-colors">
+                ⚠️ アプリのローカルデータをすべてリセットする
+            </button>
+            <p class="text-[10px] text-slate-500 mt-2">※スプレッドシートのデータは消えません</p>
+        </div>
+
     </main>
 
     <script>
@@ -286,338 +294,17 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzSIX5oQo5RWrfMZT2gw9OmX7R6QIfZyMhu7dY2tk_xxlib5U6GcB43d4j_SAJUDSut/exec";
 
         // ==========================================
-        // 状態管理
+        // 💡 データリセット機能
         // ==========================================
-        let matches = JSON.parse(localStorage.getItem('fg_matches')) || [];
-        let reports = JSON.parse(localStorage.getItem('fg_reports')) || [];
-        let studies = JSON.parse(localStorage.getItem('fg_studies')) || [];
-
-        // キャラクターリスト・ランクリスト生成 (省略せず記述)
-        const characters = [
-            "C リュウ", "M リュウ", "C ケン", "M ケン", "C 春麗", "M 春麗", "C ガイル", "M ガイル", 
-            "C ブランカ", "M ブランカ", "C ダルシム", "M ダルシム", "C エドモンド本田", "M エドモンド本田", 
-            "C ザンギエフ", "M ザンギエフ", "C キャミィ", "M キャミィ", "C ジュリ", "M ジュリ", 
-            "C ルーク", "M ルーク", "C ジェイミー", "M ジェイミー", "C キンバリー", "M キンバリー", 
-            "C マノン", "M マノン", "C マリーザ", "M マリーザ", "C JP", "M JP", "C リリー", "M リリー", 
-            "C ディージェイ", "M ディージェイ", "C ラシード", "M ラシード", "C A.K.I.", "M A.K.I.", 
-            "C エド", "M エド", "C 豪鬼", "M 豪鬼", "C ベガ", "M ベガ", "C テリー", "M テリー", 
-            "C 舞", "M 舞", "C エレナ", "M エレナ", "C サガット", "M サガット", "C C.ヴァイパー", "M C.ヴァイパー", 
-            "C アレックス", "M アレックス", "C イングリッド", "M イングリッド", "その他"
-        ];
-        document.querySelectorAll('.char-select').forEach(select => {
-            characters.forEach(char => select.add(new Option(char, char)));
-        });
-
-        const ranks = [{ value: "", label: "未設定" }];
-        for (let i = 2500; i >= 1000; i -= 100) { ranks.push({ value: `MR${i}台`, label: `MR${i}台` }); }
-        ranks.push({ value: "Master (MR未定)", label: "Master (MR未定)" });
-        const rankNames = ["Diamond", "Platinum", "Gold", "Silver", "Bronze", "Iron", "Rookie"];
-        rankNames.forEach(rankName => {
-            for (let i = 5; i >= 1; i--) { ranks.push({ value: `${rankName} ${i}`, label: `${rankName} ${i}` }); }
-        });
-        document.querySelectorAll('.rank-select').forEach(select => {
-            ranks.forEach(rank => select.add(new Option(rank.label, rank.value)));
-        });
-
-        // タブ切り替えロジック
-        const tabs = [
-            { id: 'match', btn: document.getElementById('tab-match'), content: document.getElementById('content-match') },
-            { id: 'replay', btn: document.getElementById('tab-replay'), content: document.getElementById('content-replay') },
-            { id: 'report', btn: document.getElementById('tab-report'), content: document.getElementById('content-report') }
-        ];
-        function switchTab(activeId) {
-            tabs.forEach(tab => {
-                if (tab.id === activeId) {
-                    tab.content.classList.remove('hidden');
-                    tab.btn.className = "flex-1 py-3 text-center font-medium bg-indigo-900/50 text-indigo-300 transition-colors border-r border-slate-700 last:border-r-0";
-                } else {
-                    tab.content.classList.add('hidden');
-                    tab.btn.className = "flex-1 py-3 text-center font-medium text-slate-400 hover:bg-slate-700 transition-colors border-r border-slate-700 last:border-r-0";
-                }
-            });
-        }
-        tabs.forEach(tab => tab.btn.addEventListener('click', () => switchTab(tab.id)));
-        switchTab('match');
-
-        // ==========================================
-        // 💡 共通機能：スプレッドシートへのデータ送信
-        // ==========================================
-        async function sendDataToGAS(data, buttonId) {
-            const btn = document.getElementById(buttonId);
-            const originalText = btn.textContent;
-            const syncStatus = document.getElementById('sync-status');
-            
-            // UIを送信中状態に変更
-            btn.disabled = true;
-            btn.innerHTML = `<svg class="sync-icon w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>保存中...`;
-            syncStatus.classList.remove('hidden');
-            syncStatus.classList.add('flex');
-
-            try {
-                // GASにPOSTリクエストを送信
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // CORSエラーを回避
-                    headers: { 
-                        // application/jsonだとブラウザにブロックされやすいため text/plain に変更
-                        'Content-Type': 'text/plain' 
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                // 送信完了時のUIリセット
-                showToast('保存しました！（スプレッドシートにも送信完了）');
-            } catch (error) {
-                console.error("GAS送信エラー:", error);
-                // エラーになってもローカル保存は完了しているのでユーザーにはその旨を伝える
-                showToast('端末に保存しました（※クラウド送信は失敗しました）');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-                syncStatus.classList.add('hidden');
-                syncStatus.classList.remove('flex');
+        document.getElementById('reset-data-btn').addEventListener('click', () => {
+            if (confirm('本当にすべてのデータを削除して初期状態に戻しますか？\n（この操作は取り消せません）')) {
+                localStorage.removeItem('fg_matches');
+                localStorage.removeItem('fg_reports');
+                localStorage.removeItem('fg_studies');
+                alert('データをリセットしました。画面を再読み込みします。');
+                location.reload(); // 画面をリロードして反映
             }
-        }
-
-        // ==========================================
-        // 対戦記録モード
-        // ==========================================
-        // (カンニングペーパーとタグのロジックはそのまま)
-        document.getElementById('match-character').addEventListener('change', (e) => {
-            const selectedChar = e.target.value;
-            const cheatSheetArea = document.getElementById('cheat-sheet-area');
-            const cheatSheetList = document.getElementById('cheat-sheet-list');
-            if (!selectedChar) { cheatSheetArea.classList.add('hidden'); return; }
-            const relevantMatches = matches.filter(m => m.character === selectedChar && m.memo && m.memo.trim() !== '');
-            if (relevantMatches.length > 0) {
-                cheatSheetList.innerHTML = [...relevantMatches].reverse().slice(0, 3).map(m => {
-                    const badge = m.result === 'win' ? '<span class="text-[10px] bg-blue-900 text-blue-300 px-1 rounded ml-1 border border-blue-700">勝ち</span>' : '<span class="text-[10px] bg-red-900 text-red-300 px-1 rounded ml-1 border border-red-700">負け</span>';
-                    return `<li class="py-0.5">${m.memo} ${badge}</li>`;
-                }).join('');
-                cheatSheetArea.classList.remove('hidden');
-            } else { cheatSheetArea.classList.add('hidden'); }
         });
-        document.querySelectorAll('#match-form .tag-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const memoInput = document.getElementById('match-memo');
-                memoInput.value += (memoInput.value && !memoInput.value.endsWith(' ') ? ' ' : '') + '#' + btn.getAttribute('data-tag') + ' ';
-                memoInput.focus();
-            });
-        });
-
-        document.getElementById('match-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            // 日本時間での現在時刻を見やすい形式にフォーマット
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-
-            const newData = {
-                type: "match", // GAS側で仕分けするためのタイプ
-                id: Date.now(), 
-                date: dateStr, // フォーマットした文字列として保存
-                myCharacter: document.getElementById('match-my-character').value, 
-                character: document.getElementById('match-character').value,
-                result: document.querySelector('input[name="match-result"]:checked').value === 'win' ? '勝ち' : '負け', // 日本語に変換
-                replayId: document.getElementById('match-replay-id').value, 
-                memo: document.getElementById('match-memo').value
-            };
-            
-            matches.push({ ...newData, result: document.querySelector('input[name="match-result"]:checked').value }); // ローカル用はwin/lose維持
-            localStorage.setItem('fg_matches', JSON.stringify(matches));
-            
-            e.target.reset(); document.getElementById('cheat-sheet-area').classList.add('hidden');
-            renderStats(); renderMatchHistory();
-            
-            // スプレッドシートへ送信
-            sendDataToGAS(newData, 'submit-match-btn');
-        });
-
-        function renderStats() {
-            const tbody = document.getElementById('stats-table-body');
-            const noDataMsg = document.getElementById('no-match-data');
-            if (matches.length === 0) { tbody.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
-            noDataMsg.classList.add('hidden');
-            const stats = {};
-            matches.forEach(m => {
-                const key = `${m.myCharacter || '未設定'}_${m.character}`;
-                if (!stats[key]) stats[key] = { myChar: m.myCharacter || '未設定', oppChar: m.character, play: 0, win: 0 };
-                stats[key].play++; if (m.result === 'win') stats[key].win++;
-            });
-            const statsArray = Object.values(stats).map(d => ({ ...d, winRate: Math.round((d.win / d.play) * 100) })).sort((a, b) => b.play - a.play);
-            tbody.innerHTML = statsArray.map(s => `
-                <tr class="hover:bg-slate-700 transition-colors">
-                    <td class="px-4 py-3 font-medium text-slate-200">${s.myChar}</td>
-                    <td class="px-4 py-3 font-medium text-white">${s.oppChar}</td>
-                    <td class="px-4 py-3 text-right">${s.play}</td>
-                    <td class="px-4 py-3 text-right text-blue-400">${s.win}</td>
-                    <td class="px-4 py-3 text-right font-bold ${s.winRate >= 50 ? 'text-green-400' : 'text-red-400'}">${s.winRate}%</td>
-                </tr>`).join('');
-        }
-
-        function renderMatchHistory() {
-            const list = document.getElementById('match-history-list');
-            const trendMeter = document.getElementById('trend-meter');
-            if (matches.length === 0) { list.innerHTML = ''; trendMeter.innerHTML = ''; return; }
-            const recentMatches = [...matches].reverse().slice(0, 10);
-            const trendWinRate = Math.round((recentMatches.filter(m => m.result === 'win').length / recentMatches.length) * 100);
-            trendMeter.innerHTML = `<span class="text-xs font-bold text-slate-400 tracking-wider">直近: ${trendWinRate}%</span><div class="flex gap-1 ml-2 bg-slate-900/50 py-1 px-2 rounded-full border border-slate-700">${[...recentMatches].reverse().map(m => m.result === 'win' ? '<span class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]"></span>' : '<span class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.6)]"></span>').join('')}</div>`;
-            list.innerHTML = recentMatches.map(m => {
-                // dateStrが古い形式の場合と新しい形式(文字列)の場合で分岐
-                let dateDisp = m.date;
-                if(m.date.includes('T')) {
-                    const d = new Date(m.date);
-                    dateDisp = `${d.getMonth()+1}/${d.getDate()}`;
-                } else {
-                    dateDisp = m.date.substring(5, 10); // MM/DD部分だけ抽出
-                }
-                const isWin = m.result === 'win';
-                return `<div class="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
-                    <div class="flex justify-between items-center mb-1">
-                        <div class="flex items-center flex-wrap gap-y-1">
-                            <span class="text-xs font-bold ${isWin ? 'bg-blue-900/50 text-blue-300 border-blue-800' : 'bg-red-900/50 text-red-300 border-red-800'} border px-2 py-0.5 rounded mr-2">${isWin ? 'WIN' : 'LOSE'}</span>
-                            <span class="text-sm font-medium text-slate-200">${m.myCharacter || '未設定'} <span class="text-slate-500 mx-1">vs</span> ${m.character}</span>
-                        </div>
-                        <span class="text-xs text-slate-400 ml-2">${dateDisp}</span>
-                    </div>
-                    ${m.memo ? `<p class="text-sm text-slate-300 mt-1 whitespace-pre-wrap">${m.memo}</p>` : ''}
-                </div>`;
-            }).join('');
-        }
-
-        // ==========================================
-        // リプレイ鑑賞モード
-        // ==========================================
-        document.getElementById('replay-study-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-            
-            const selectedPoints = Array.from(document.querySelectorAll('.point-checkbox:checked')).map(cb => cb.value);
-            
-            const newData = {
-                type: "study",
-                id: Date.now(),
-                date: dateStr,
-                p1Char: document.getElementById('study-p1-char').value,
-                p1Rank: document.getElementById('study-p1-rank').value,
-                p2Char: document.getElementById('study-p2-char').value,
-                p2Rank: document.getElementById('study-p2-rank').value,
-                source: document.getElementById('study-source').value,
-                points: selectedPoints,
-                memo: document.getElementById('study-memo').value
-            };
-
-            studies.unshift(newData);
-            localStorage.setItem('fg_studies', JSON.stringify(studies));
-            e.target.reset(); renderStudies();
-            
-            // スプレッドシートへ送信
-            sendDataToGAS(newData, 'submit-study-btn');
-        });
-
-        function renderStudies() {
-            const list = document.getElementById('study-list');
-            const noDataMsg = document.getElementById('no-study-data');
-            if (studies.length === 0) { list.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
-            noDataMsg.classList.add('hidden');
-
-            list.innerHTML = studies.map(s => {
-                const tagsHtml = s.points && s.points.length > 0 ? s.points.map(p => `<span class="text-[10px] bg-violet-900/60 text-violet-300 border border-violet-700/50 px-1.5 py-0.5 rounded-sm mr-1">${p}</span>`).join('') : '';
-                const p1Char = s.p1Char || s.myChar || '未設定';
-                const p2Char = s.p2Char || s.oppChar || '未設定';
-                const p1RankHtml = s.p1Rank ? `<span class="text-xs text-slate-400 font-normal ml-1">(${s.p1Rank})</span>` : '';
-                const p2RankHtml = s.p2Rank ? `<span class="text-xs text-slate-400 font-normal ml-1">(${s.p2Rank})</span>` : '';
-
-                let sourceHtml = '';
-                if (s.source) {
-                    if (s.source.startsWith('http')) {
-                        sourceHtml = `<a href="${s.source}" target="_blank" class="text-xs text-violet-400 hover:underline inline-flex items-center mt-2"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>動画を開く</a>`;
-                    } else {
-                        sourceHtml = `<div class="text-xs text-slate-400 mt-2 font-mono bg-slate-800 inline-block px-2 py-1 rounded">ID: ${s.source}</div>`;
-                    }
-                }
-                
-                let dateDisp = s.date;
-                if(s.date && s.date.includes('T')) {
-                    const d = new Date(s.date);
-                    dateDisp = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-                } else if(s.date) {
-                    dateDisp = s.date.substring(0, 10);
-                }
-
-                return `
-                <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                    <div class="flex justify-between items-start mb-3 border-b border-slate-600/50 pb-2">
-                        <div class="font-bold text-slate-200 flex flex-col gap-1">
-                            <div class="flex items-baseline">
-                                <span class="bg-violet-900 text-white px-1.5 py-0.5 rounded mr-1.5 text-[10px] self-center">1P</span>
-                                <span class="text-white">${p1Char}</span>${p1RankHtml}
-                            </div>
-                            <div class="text-slate-500 text-[10px] pl-6 font-normal">VS</div>
-                            <div class="flex items-baseline">
-                                <span class="bg-teal-900 text-white px-1.5 py-0.5 rounded mr-1.5 text-[10px] self-center">2P</span>
-                                <span class="text-slate-300">${p2Char}</span>${p2RankHtml}
-                            </div>
-                        </div>
-                        <span class="text-xs text-slate-500 mt-1">${dateDisp}</span>
-                    </div>
-                    ${tagsHtml ? `<div class="mb-2 flex flex-wrap">${tagsHtml}</div>` : ''}
-                    <p class="text-sm text-slate-200 whitespace-pre-wrap bg-slate-800/50 p-3 rounded border-l-2 border-violet-500">${s.memo}</p>
-                    ${sourceHtml}
-                </div>`;
-            }).join('');
-        }
-
-        // ==========================================
-        // 練習日報モード
-        // ==========================================
-        document.getElementById('report-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-
-            const newData = {
-                type: "report",
-                id: Date.now(), 
-                date: dateStr,
-                time: document.getElementById('report-time').value, 
-                focus: document.getElementById('report-focus').value, 
-                url: document.getElementById('report-url').value
-            };
-
-            reports.unshift(newData);
-            localStorage.setItem('fg_reports', JSON.stringify(reports)); 
-            e.target.reset(); renderReports();
-            
-            // スプレッドシートへ送信
-            sendDataToGAS(newData, 'submit-report-btn');
-        });
-
-        function renderReports() {
-            const list = document.getElementById('report-list');
-            const noDataMsg = document.getElementById('no-report-data');
-            if (reports.length === 0) { list.innerHTML = ''; noDataMsg.classList.remove('hidden'); return; }
-            noDataMsg.classList.add('hidden');
-            list.innerHTML = reports.map(r => {
-                let dateDisp = r.date;
-                if(r.date && r.date.includes('T')) {
-                    const d = new Date(r.date);
-                    dateDisp = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-                } else if (r.date) {
-                    dateDisp = r.date.substring(0, 10);
-                }
-
-                return `<div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-bold text-slate-400">${dateDisp}</span>
-                        <span class="text-xs bg-teal-900/50 text-teal-300 border border-teal-800 px-2 py-1 rounded-full font-medium">${r.time}分</span>
-                    </div>
-                    <p class="text-sm text-slate-200 whitespace-pre-wrap">${r.focus}</p>
-                    ${r.url ? `<div class="mt-3 pt-3 border-t border-slate-600/50"><a href="${r.url}" target="_blank" class="inline-flex items-center text-xs font-medium text-teal-400 hover:text-teal-300 bg-teal-900/20 py-1 px-2 rounded transition-colors"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>参考動画を見る</a></div>` : ''}
-                </div>`;
-            }).join('');
-        }
 
         // ==========================================
         // 共通
@@ -634,5 +321,6 @@
     </script>
 </body>
 </html>
+
 
 
